@@ -103,19 +103,19 @@
             overflow: hidden;
             transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1);
             background: #fff;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
 
         .wheel-pointer {
             position: absolute;
-            top: -20px;
+            top: -15px;
             left: 50%;
             transform: translateX(-50%);
             width: 40px;
             height: 40px;
             background: #ef4444;
             clip-path: polygon(50% 100%, 0 0, 100% 0);
-            z-index: 10;
+            z-index: 20;
             filter: drop-shadow(0 4px 2px rgba(0,0,0,0.2));
         }
 
@@ -129,13 +129,14 @@
             background: #fde047;
             border: 4px solid #b91c1c;
             border-radius: 50%;
-            z-index: 5;
+            z-index: 10;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             color: #b91c1c;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
         }
 
         @media (min-width: 768px) and (max-width: 1023px) {
@@ -179,6 +180,7 @@
                         <span class="text-gray-400 opacity-60 text-xl md:text-2xl chinese-font text-center px-6">把食材拖进来！<br>Drag ingredients here!</span>
                     </div>
                 </div>
+                <!-- Interactive Decoration (Chopsticks) -->
                 <div class="absolute -top-10 -right-4 md:-right-10 transform rotate(45deg) pointer-events-none scale-75 md:scale-100">
                     <svg width="120" height="120" viewBox="0 0 100 100">
                         <line x1="10" y1="10" x2="90" y2="90" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
@@ -199,42 +201,42 @@
     </div>
 
     <!-- ✨ 2026 Spin the Wheel Feature -->
-    <div class="max-w-4xl mx-auto mt-16 mb-20 p-8 gemini-card shadow-xl border-2 border-red-100 overflow-hidden">
+    <section class="max-w-4xl mx-auto mt-16 mb-20 p-8 gemini-card shadow-xl border-2 border-red-100 overflow-hidden">
         <div class="flex items-center gap-4 mb-8">
             <div class="bg-red-600 p-3 rounded-2xl shadow-inner">
                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5a2 2 0 10-2 2h2z"/></svg>
             </div>
             <div>
                 <h2 class="text-3xl font-bold text-red-700 chinese-font">2026 新春如意轮 ✨</h2>
-                <p class="text-red-800 opacity-70 font-medium">Lucky Prophecy Wheel</p>
+                <p class="text-red-800 opacity-70 font-medium">Lucky Prophecy Wheel for Students</p>
             </div>
         </div>
 
-        <div class="flex flex-col lg:flex-row items-center gap-10">
-            <!-- The Wheel -->
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-10">
+            <!-- The Wheel UI -->
             <div class="wheel-container">
                 <div class="wheel-pointer"></div>
-                <div class="wheel-center">GO!</div>
+                <div class="wheel-center" onclick="spinWheel()">GO!</div>
                 <canvas id="wheel" width="300" height="300"></canvas>
             </div>
 
-            <!-- Controls & Result -->
+            <!-- Interaction Panel -->
             <div class="flex-1 space-y-6 text-center lg:text-left">
                 <div class="space-y-2">
-                    <h3 class="text-2xl font-black text-red-600">转一转，看好运！</h3>
-                    <p class="text-gray-600 font-medium italic">适合同学们的新年小预言</p>
+                    <h3 class="text-3xl font-black text-red-600 chinese-font">转一转，看好运！</h3>
+                    <p class="text-gray-600 font-medium text-lg italic">揭开属于你的 2026 关键词</p>
                 </div>
                 
-                <button onclick="spinWheel()" id="spin-btn" class="w-full lg:w-auto bg-red-600 text-white px-10 py-4 rounded-2xl font-black text-xl hover:bg-red-700 shadow-lg active:scale-95 transition-all">
+                <button onclick="spinWheel()" id="spin-btn" class="w-full lg:w-auto bg-red-600 text-white px-12 py-5 rounded-3xl font-black text-2xl hover:bg-red-700 shadow-xl active:scale-95 transition-all">
                     开始旋转 SPIN!
                 </button>
 
-                <div id="wheel-result" class="min-h-[100px] p-6 bg-white rounded-2xl border-4 border-dashed border-red-100 flex items-center justify-center text-center">
-                    <p class="text-gray-400 italic">点击旋转，揭晓你的 2026 关键词...</p>
+                <div id="wheel-result" class="min-h-[120px] p-6 bg-white/80 rounded-[2rem] border-4 border-dashed border-red-100 flex items-center justify-center text-center shadow-inner">
+                    <p class="text-gray-400 italic text-lg">点一下“GO”或旋转按钮，揭晓预言...</p>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Win Modal -->
     <div id="win-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-50 p-6">
@@ -251,7 +253,7 @@
     </div>
 
     <script>
-        // --- GAME LOGIC ---
+        // --- DATA & ASSETS ---
         const svgIcons = {
             fish: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M10,50 Q30,20 60,35 T90,50 Q70,80 40,65 T10,50" fill="#ff9999" stroke="#b91c1c" stroke-width="2"/><circle cx="75" cy="45" r="3" fill="black"/></svg>`,
             pomelo: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="50" cy="55" r="35" fill="#fde047" stroke="#a16207" stroke-width="2"/><path d="M50,20 Q55,10 60,20" fill="none" stroke="#166534" stroke-width="4"/></svg>`,
@@ -278,9 +280,7 @@
             { id: 10, name: '酸梅酱', pinyin: 'suān méi jàng', en: 'Plum Sauce', phrase: '甜甜蜜蜜', phPinyin: 'tián tián mì mì', phEn: 'Sweet relationships', key: 'plumSauce' }
         ];
 
-        let score = 0;
-
-        // --- WHEEL LOGIC ---
+        // --- WHEEL CONFIG ---
         const wishes = [
             { text: "学业进步", en: "Aces in Exams", color: "#fca5a5", icon: "📚" },
             { text: "聪明伶俐", en: "Smart & Sharp", color: "#fecaca", icon: "💡" },
@@ -292,11 +292,13 @@
             { text: "事事顺利", en: "Smooth Sailing", color: "#f0fdf4", icon: "⛵" }
         ];
 
+        let score = 0;
         const canvas = document.getElementById('wheel');
         const ctx = canvas.getContext('2d');
         let currentRotation = 0;
         let isSpinning = false;
 
+        // --- WHEEL FUNCTIONS ---
         function drawWheel() {
             const size = canvas.width;
             const center = size / 2;
@@ -318,18 +320,18 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Draw text
+                // Draw text & icon
                 ctx.save();
                 ctx.translate(center, center);
                 ctx.rotate(startAngle + sliceAngle / 2);
                 ctx.textAlign = "right";
                 ctx.fillStyle = "#b91c1c";
-                ctx.font = "bold 14px sans-serif";
+                
+                ctx.font = "bold 15px sans-serif";
                 ctx.fillText(wish.text, radius - 20, 5);
                 
-                // Draw Icon
-                ctx.font = "18px sans-serif";
-                ctx.fillText(wish.icon, radius - 85, 8);
+                ctx.font = "20px sans-serif";
+                ctx.fillText(wish.icon, radius - 90, 8);
                 ctx.restore();
             });
         }
@@ -342,45 +344,45 @@
             const resultDiv = document.getElementById('wheel-result');
             
             btn.disabled = true;
-            btn.classList.add('opacity-50');
-            resultDiv.innerHTML = `<p class="text-red-500 font-bold animate-pulse text-lg">好运正在飞奔而来... 🏃‍♂️💨</p>`;
+            btn.classList.add('opacity-50', 'scale-95');
+            resultDiv.innerHTML = `<p class="text-red-500 font-bold animate-pulse text-xl">✨ 正在为您捕捉好运中... ✨</p>`;
 
-            // Generate random rotations
-            const extraDegrees = Math.floor(Math.random() * 360);
-            const totalRotation = currentRotation + (360 * 5) + extraDegrees;
+            // Spin math
+            const minSpin = 360 * 5; // 5 full loops
+            const randomExtra = Math.floor(Math.random() * 360);
+            const totalRotation = currentRotation + minSpin + randomExtra;
             currentRotation = totalRotation;
 
             canvas.style.transform = `rotate(${totalRotation}deg)`;
 
+            // Wait for transition to finish (4s in CSS)
             setTimeout(() => {
                 isSpinning = false;
                 btn.disabled = false;
-                btn.classList.remove('opacity-50');
+                btn.classList.remove('opacity-50', 'scale-95');
 
-                // Calculate which slice landed at the top
-                // Correction: Pointer is at 12 o'clock (-90 deg from standard canvas 0)
                 const actualDegrees = totalRotation % 360;
                 const sliceSize = 360 / wishes.length;
-                // Index formula based on pointer position and rotation
+                // Offset calculation for pointer at 12 o'clock
                 const index = Math.floor(((360 - actualDegrees + 270) % 360) / sliceSize);
                 const win = wishes[index];
 
                 resultDiv.innerHTML = `
-                    <div class="animate-bounce">
-                        <span class="text-4xl block mb-2">${win.icon}</span>
-                        <h4 class="text-3xl font-black text-red-600 chinese-font">“${win.text}”</h4>
-                        <p class="text-lg text-red-800 font-bold uppercase mt-1">${win.en}</p>
+                    <div class="animate-in zoom-in duration-500 flex flex-col items-center">
+                        <span class="text-5xl block mb-2 transform hover:scale-125 transition-transform cursor-default">${win.icon}</span>
+                        <h4 class="text-4xl font-black text-red-600 chinese-font">“${win.text}”</h4>
+                        <p class="text-xl text-red-800 font-bold uppercase mt-2 tracking-widest">${win.en}</p>
                     </div>
                 `;
             }, 4100);
         }
 
-        // --- INIT ---
+        // --- CORE GAME LOGIC ---
         function init() {
             const ingList = document.getElementById('ingredients-list');
             const phrList = document.getElementById('phrases-list');
 
-            // Setup Ingredients
+            // Setup Ingredients (Source)
             [...gameData].sort(() => Math.random() - 0.5).forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'ingredient-card bg-white p-3 rounded-2xl shadow-sm flex items-center gap-4';
@@ -402,7 +404,7 @@
                 ingList.appendChild(el);
             });
 
-            // Setup Phrases
+            // Setup Phrases (Targets)
             [...gameData].sort(() => Math.random() - 0.5).forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'drop-zone rounded-3xl p-4 flex flex-col justify-center items-center text-center relative shadow-inner';
@@ -431,7 +433,7 @@
                 const data = gameData.find(d => d.id === sId);
                 targetEl.classList.add('matched');
                 targetEl.innerHTML = `
-                    <div class="w-12 h-12 mb-2">${svgIcons[data.key]}</div>
+                    <div class="w-12 h-12 mb-2 animate-bounce">${svgIcons[data.key]}</div>
                     <p class="chinese-font text-lg font-bold text-green-700">${data.phrase}</p>
                     <p class="text-xs text-green-600 font-bold">MATCHED! ✅</p>
                 `;
