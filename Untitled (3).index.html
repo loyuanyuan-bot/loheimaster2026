@@ -1,3 +1,10 @@
+<script>
+  var password = prompt("Enter access code:");
+  if (password !== "CNY2026") {
+      alert("Wrong code. Access denied.");
+      window.location.href = "https://google.com";
+  }
+</script>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -395,4 +402,5 @@
         window.onload = init;
     </script>
 </body>
+
 </html>
