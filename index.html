@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>捞鱼生达人 - Lo Hei Master (Full Version)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -10,7 +10,8 @@
         
         body {
             background-color: #fffaf0;
-            touch-action: none;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
         }
 
         .chinese-font {
@@ -21,6 +22,14 @@
             transition: all 0.2s ease;
             cursor: grab;
             border: 2px solid #fee2e2;
+            /* touch-action: pan-y allows the user to scroll vertically even if they start a touch on the card */
+            touch-action: pan-y; 
+            user-select: none;
+            -webkit-user-drag: element;
+        }
+
+        .ingredient-card:active {
+            cursor: grabbing;
         }
 
         .ingredient-card:hover {
@@ -76,7 +85,6 @@
             100% { transform: scale(1) rotate(0); opacity: 1; }
         }
 
-        /* Gemini Features Styling */
         .gemini-card {
             background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
             border: 2px solid #fecaca;
@@ -195,7 +203,7 @@
     </div>
 
     <script>
-        const apiKey = ""; // 运行时自动注入
+        const apiKey = ""; 
 
         const svgIcons = {
             fish: `<svg viewBox="0 0 100 100"><path d="M10,50 Q30,20 60,35 T90,50 Q70,80 40,65 T10,50" fill="#ff9999" stroke="#b91c1c"/><path d="M65,40 Q75,45 85,40" fill="none" stroke="#b91c1c" stroke-width="2"/><circle cx="75" cy="45" r="2" fill="black"/></svg>`,
@@ -226,8 +234,6 @@
         let score = 0;
         let draggedId = null;
 
-        // --- AI 调用逻辑 ---
-        
         async function callGemini(prompt, systemInstruction) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             let retries = 0;
@@ -267,15 +273,13 @@
             resultDiv.innerText = "✨ AI 正在构思吉祥话...";
 
             const prompt = `用户输入或愿望: ${input}`;
-            const system = "你是一个新加坡捞鱼生创意大师。请将用户的输入（如愿望或特定关键字，如：鸡）与捞鱼生的食材或谐音结合，创作一段有趣的中英双语吉祥话。如果用户输入动物或物品，请找出其吉祥的谐音并联系到鱼生制作步骤（如：鸡谐音吉祥，对应的步骤是放鱼代表年年有余）。要求：语气亲切喜庆，内容简洁易读。";
+            const system = "你是一个新加坡捞鱼生创意大师。请将用户的输入（如愿望或特定关键字，如：鸡）与捞鱼生的食材或谐音结合，创作一段有趣的中英双语吉祥话。要求：语气亲切喜庆，内容简洁易读。";
 
             const result = await callGemini(prompt, system);
             resultDiv.innerText = result;
             btn.disabled = false;
             btn.innerText = "✨ 生成";
         }
-
-        // --- 核心游戏逻辑 ---
 
         function init() {
             const ingList = document.getElementById('ingredients-list');
@@ -297,12 +301,20 @@
                         <p class="text-[9px] text-gray-400 font-bold uppercase truncate">${item.en}</p>
                     </div>
                 `;
+
+                // Standard Drag events
                 el.addEventListener('dragstart', (e) => {
                     draggedId = item.id;
                     e.dataTransfer.setData('text/plain', item.id);
                     el.classList.add('scale-95', 'opacity-50');
                 });
+                
                 el.addEventListener('dragend', () => el.classList.remove('scale-95', 'opacity-50'));
+
+                // Enhanced Touch behavior for iPad/Mobile to allow scrolling
+                // We use touch-action: pan-y in CSS, which natively handles this.
+                // No extra JS needed for scrolling, but we ensure events don't block.
+                
                 ingList.appendChild(el);
             });
 
@@ -317,8 +329,13 @@
                     <div class="mt-2 text-[9px] text-gray-300 font-bold uppercase placeholder-text">拖动食材到此处</div>
                 `;
 
-                el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
+                el.addEventListener('dragover', (e) => { 
+                    e.preventDefault(); 
+                    el.classList.add('drag-over'); 
+                });
+                
                 el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+                
                 el.addEventListener('drop', (e) => {
                     e.preventDefault();
                     el.classList.remove('drag-over');
@@ -332,53 +349,36 @@
         function handleDrop(sId, tId, targetEl) {
             if (sId === tId) {
                 if (targetEl.classList.contains('matched')) return;
-
                 const data = gameData.find(d => d.id === sId);
-                
                 targetEl.classList.add('matched');
                 targetEl.innerHTML = `
                     <div class="w-10 h-10 mb-1">${svgIcons[data.key]}</div>
                     <p class="chinese-font text-sm font-bold text-green-700">${data.phrase}</p>
                     <p class="text-[9px] text-green-600 font-bold">正确！CORRECT!</p>
                 `;
-
                 const source = document.querySelector(`.ingredient-card[data-id="${sId}"]`);
                 source.classList.add('opacity-10', 'grayscale', 'pointer-events-none');
                 source.draggable = false;
-
                 const plate = document.getElementById('plate-items');
                 if (score === 0) plate.innerHTML = '';
-                
                 const pItem = document.createElement('div');
                 pItem.className = 'w-16 h-16 md:w-20 md:h-20 on-plate absolute';
-                
                 const angle = Math.random() * Math.PI * 2;
                 const radius = Math.random() * 80;
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
-                
                 pItem.style.left = `calc(50% + ${x}px - 32px)`;
                 pItem.style.top = `calc(50% + ${y}px - 32px)`;
                 pItem.innerHTML = svgIcons[data.key];
                 plate.appendChild(pItem);
-
                 score++;
                 document.getElementById('score').innerText = score;
-                document.getElementById('feedback').innerHTML = `<div class="text-green-600">✅ “${data.phrase}”</div><div class="text-sm text-gray-500 font-medium">${data.phEn}</div>`;
-                
-                if (score === 10) {
-                    setTimeout(() => document.getElementById('win-modal').classList.remove('hidden'), 800);
-                }
+                document.getElementById('feedback').innerHTML = `<div class="text-green-600">✅ “${data.phrase}”</div>`;
+                if (score === 10) setTimeout(() => document.getElementById('win-modal').classList.remove('hidden'), 800);
             } else {
                 document.getElementById('feedback').innerHTML = `<div class="text-red-600">❌ 请再试一次！Try again!</div>`;
                 setTimeout(() => { if(document.getElementById('feedback').innerText.includes('❌')) document.getElementById('feedback').innerText = ""; }, 1500);
             }
-        }
-
-        function showToast() {
-            const toast = document.getElementById('share-toast');
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
         function copyFullCode() {
@@ -389,12 +389,12 @@
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            showToast();
+            const toast = document.getElementById('share-toast');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
         window.onload = init;
     </script>
 </body>
-
 </html>
-
