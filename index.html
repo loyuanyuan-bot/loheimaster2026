@@ -23,9 +23,9 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             cursor: grab;
             border: 2px solid #fee2e2;
-            touch-action: none; /* Critical for custom touch handling */
+            touch-action: pan-y; /* Allows vertical scrolling while interacting */
             user-select: none;
-            -webkit-user-drag: element;
+            -webkit-user-drag: none;
             min-height: 80px;
             z-index: 10;
         }
@@ -382,64 +382,88 @@
         let activeTouchElement = null;
         let touchOffsetX = 0;
         let touchOffsetY = 0;
-        let originalParent = null;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
 
         function handleTouchStart(e, item) {
             const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isDragging = false;
+            
             const rect = e.target.closest('.ingredient-card').getBoundingClientRect();
-            
-            activeTouchElement = e.target.closest('.ingredient-card').cloneNode(true);
-            activeTouchElement.style.position = 'fixed';
-            activeTouchElement.style.width = rect.width + 'px';
-            activeTouchElement.style.height = rect.height + 'px';
-            activeTouchElement.style.left = rect.left + 'px';
-            activeTouchElement.style.top = rect.top + 'px';
-            activeTouchElement.style.zIndex = '1000';
-            activeTouchElement.style.pointerEvents = 'none';
-            activeTouchElement.style.opacity = '0.8';
-            activeTouchElement.style.transform = 'scale(1.1)';
-            activeTouchElement.dataset.id = item.id;
-            
-            touchOffsetX = touch.clientX - rect.left;
-            touchOffsetY = touch.clientY - rect.top;
-            
-            document.body.appendChild(activeTouchElement);
-            e.target.closest('.ingredient-card').style.opacity = '0.3';
-            e.preventDefault();
+            touchOffsetX = touchStartX - rect.left;
+            touchOffsetY = touchStartY - rect.top;
         }
 
         function handleTouchMove(e) {
-            if (!activeTouchElement) return;
             const touch = e.touches[0];
-            activeTouchElement.style.left = (touch.clientX - touchOffsetX) + 'px';
-            activeTouchElement.style.top = (touch.clientY - touchOffsetY) + 'px';
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
 
-            // Visual feedback for drop zones
-            const zones = document.querySelectorAll('.drop-zone');
-            zones.forEach(zone => {
-                const rect = zone.getBoundingClientRect();
-                if (touch.clientX > rect.left && touch.clientX < rect.right &&
-                    touch.clientY > rect.top && touch.clientY < rect.bottom) {
-                    zone.classList.add('drag-over');
-                } else {
-                    zone.classList.remove('drag-over');
+            // If we haven't started dragging yet, check if it's a drag or a scroll
+            if (!isDragging) {
+                // If horizontal movement is greater than vertical, start dragging
+                if (dx > dy && dx > 10) {
+                    isDragging = true;
+                    
+                    const originalEl = e.target.closest('.ingredient-card');
+                    const rect = originalEl.getBoundingClientRect();
+                    
+                    activeTouchElement = originalEl.cloneNode(true);
+                    activeTouchElement.style.position = 'fixed';
+                    activeTouchElement.style.width = rect.width + 'px';
+                    activeTouchElement.style.height = rect.height + 'px';
+                    activeTouchElement.style.left = rect.left + 'px';
+                    activeTouchElement.style.top = rect.top + 'px';
+                    activeTouchElement.style.zIndex = '1000';
+                    activeTouchElement.style.pointerEvents = 'none';
+                    activeTouchElement.style.opacity = '0.8';
+                    activeTouchElement.style.transform = 'scale(1.1)';
+                    activeTouchElement.dataset.id = originalEl.dataset.id;
+                    
+                    document.body.appendChild(activeTouchElement);
+                    originalEl.style.opacity = '0.3';
                 }
-            });
-            e.preventDefault();
+            }
+
+            if (isDragging && activeTouchElement) {
+                activeTouchElement.style.left = (touch.clientX - touchOffsetX) + 'px';
+                activeTouchElement.style.top = (touch.clientY - touchOffsetY) + 'px';
+
+                // Visual feedback for drop zones
+                const zones = document.querySelectorAll('.drop-zone');
+                zones.forEach(zone => {
+                    const rect = zone.getBoundingClientRect();
+                    if (touch.clientX > rect.left && touch.clientX < rect.right &&
+                        touch.clientY > rect.top && touch.clientY < rect.bottom) {
+                        zone.classList.add('drag-over');
+                    } else {
+                        zone.classList.remove('drag-over');
+                    }
+                });
+                
+                // Prevent scrolling when actively dragging
+                if (e.cancelable) e.preventDefault();
+            }
         }
 
         function handleTouchEnd(e) {
-            if (!activeTouchElement) return;
+            if (!isDragging || !activeTouchElement) {
+                activeTouchElement = null;
+                isDragging = false;
+                return;
+            }
+
             const touch = e.changedTouches[0];
             const zones = document.querySelectorAll('.drop-zone');
-            let dropped = false;
-
+            
             zones.forEach(zone => {
                 const rect = zone.getBoundingClientRect();
                 if (touch.clientX > rect.left && touch.clientX < rect.right &&
                     touch.clientY > rect.top && touch.clientY < rect.bottom) {
                     handleDrop(parseInt(activeTouchElement.dataset.id), parseInt(zone.dataset.id), zone);
-                    dropped = true;
                 }
                 zone.classList.remove('drag-over');
             });
@@ -451,6 +475,7 @@
 
             activeTouchElement.remove();
             activeTouchElement = null;
+            isDragging = false;
         }
 
         // --- CORE GAME LOGIC ---
@@ -480,10 +505,10 @@
                 });
                 el.addEventListener('dragend', () => el.classList.remove('opacity-40'));
 
-                // Touch Events
-                el.addEventListener('touchstart', (e) => handleTouchStart(e, item), {passive: false});
-                el.addEventListener('touchmove', handleTouchMove, {passive: false});
-                el.addEventListener('touchend', handleTouchEnd, {passive: false});
+                // Touch Events (Hybrid scrolling/dragging)
+                el.addEventListener('touchstart', (e) => handleTouchStart(e, item), {passive: true});
+                el.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false});
+                el.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: true});
 
                 ingList.appendChild(el);
             });
