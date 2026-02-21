@@ -11,21 +11,22 @@
         body {
             background-color: #fffaf0;
             overflow-x: hidden;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+            -webkit-overflow-scrolling: touch;
         }
 
         .chinese-font {
             font-family: 'Ma Shan Zheng', cursive, 'Noto Sans SC', sans-serif;
         }
 
+        /* Improved touch targets for iPad/Mobile */
         .ingredient-card {
             transition: all 0.2s ease;
             cursor: grab;
             border: 2px solid #fee2e2;
-            /* touch-action: pan-y allows the user to scroll vertically even if they start a touch on the card */
             touch-action: pan-y; 
             user-select: none;
             -webkit-user-drag: element;
+            min-height: 80px; /* Ensure easy tapping */
         }
 
         .ingredient-card:active {
@@ -40,7 +41,7 @@
 
         .drop-zone {
             transition: all 0.3s ease;
-            min-height: 100px;
+            min-height: 120px;
             border: 2px dashed #fca5a5;
             background-color: #fff1f1;
         }
@@ -63,9 +64,12 @@
             100% { transform: scale(1); }
         }
 
+        /* Responsive Plate Size */
         .yusheng-plate {
             background: radial-gradient(circle, #fff 60%, #fecaca 100%);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), inset 0 0 50px rgba(0,0,0,0.05);
+            width: clamp(280px, 80vw, 450px);
+            height: clamp(280px, 80vw, 450px);
         }
 
         .svg-icon {
@@ -90,114 +94,134 @@
             border: 2px solid #fecaca;
             border-radius: 1.5rem;
         }
+
+        /* Ensure grid looks good on iPads (md-lg range) */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .game-container {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            .plate-section {
+                grid-column: span 2 !important;
+                order: -1 !important;
+            }
+        }
     </style>
 </head>
-<body class="p-4 md:p-6 min-h-screen">
+<body class="p-4 md:p-8 min-h-screen">
 
-    <header class="text-center mb-8">
-        <h1 class="text-4xl md:text-5xl font-bold text-red-600 chinese-font">捞鱼生达人</h1>
-        <p class="text-lg text-red-800 font-semibold italic">Match the Ingredients to the Auspicious Phrases!</p>
-        <div class="mt-4 flex justify-center gap-4">
-            <span class="bg-red-600 text-white px-6 py-1 rounded-full text-sm font-bold shadow-md">
+    <header class="text-center mb-6">
+        <h1 class="text-4xl md:text-6xl font-bold text-red-600 chinese-font">捞鱼生达人</h1>
+        <p class="text-lg md:text-xl text-red-800 font-semibold italic mt-2">Auspicious Yusheng Matching Game</p>
+        <div class="mt-4 flex justify-center">
+            <span class="bg-red-600 text-white px-8 py-2 rounded-full text-base font-bold shadow-lg">
                 进度 Progress: <span id="score">0</span> / 10
             </span>
         </div>
     </header>
 
-    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 game-container">
         
         <!-- 食材列表 (左侧) -->
-        <div class="lg:col-span-3 space-y-3 order-2 lg:order-1">
-            <h2 class="text-xl font-bold text-orange-800 border-b-2 border-orange-200 pb-1">🍎 食材 Ingredients</h2>
-            <div id="ingredients-list" class="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                <!-- 食材将通过 JS 注入 -->
+        <div class="lg:col-span-3 space-y-4 order-2 lg:order-1">
+            <h2 class="text-2xl font-bold text-orange-800 border-b-4 border-orange-200 pb-2 flex items-center gap-2">
+                <span>🍎</span> 食材 Ingredients
+            </h2>
+            <div id="ingredients-list" class="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                <!-- Data injected via JS -->
             </div>
         </div>
 
         <!-- 核心圆盘区域 (中间) -->
-        <div class="lg:col-span-6 flex flex-col items-center justify-start order-1 lg:order-2 pt-10">
+        <div class="lg:col-span-6 flex flex-col items-center justify-start order-1 lg:order-2 py-6 plate-section">
             <div class="relative">
-                <div class="yusheng-plate w-72 h-72 md:w-96 md:h-96 rounded-full border-[12px] border-yellow-600 flex items-center justify-center relative overflow-hidden shadow-2xl">
+                <div class="yusheng-plate rounded-full border-[12px] md:border-[16px] border-yellow-600 flex items-center justify-center relative overflow-hidden shadow-2xl">
                     <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#ef4444 2px, transparent 2px); background-size: 20px 20px;"></div>
-                    <div id="plate-items" class="absolute inset-0 flex flex-wrap p-12 items-center justify-center pointer-events-none">
-                        <span class="text-gray-300 opacity-40 text-2xl chinese-font text-center">把食材放进来！<br>Place ingredients here!</span>
+                    <div id="plate-items" class="absolute inset-0 flex flex-wrap p-8 md:p-12 items-center justify-center pointer-events-none">
+                        <span class="text-gray-400 opacity-60 text-xl md:text-2xl chinese-font text-center px-6">
+                            把食材拖进来！<br>Drag ingredients here!
+                        </span>
                     </div>
                 </div>
-                <!-- 装饰性筷子 SVG -->
-                <div class="absolute -top-10 -right-10 transform rotate(45deg) pointer-events-none">
-                    <svg width="100" height="100" viewBox="0 0 100 100">
-                        <line x1="20" y1="20" x2="80" y2="80" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
-                        <line x1="30" y1="10" x2="90" y2="70" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
-                        <rect x="20" y="20" width="10" height="10" fill="#f87171" transform="rotate(45 20 20)"/>
+                <!-- Chopsticks -->
+                <div class="absolute -top-10 -right-4 md:-right-10 transform rotate-45 pointer-events-none scale-75 md:scale-100">
+                    <svg width="120" height="120" viewBox="0 0 100 100">
+                        <line x1="10" y1="10" x2="90" y2="90" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
+                        <line x1="25" y1="0" x2="105" y2="80" stroke="#7f1d1d" stroke-width="6" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
-            <p id="feedback" class="mt-8 h-12 text-red-600 font-bold text-xl text-center px-4"></p>
+            <p id="feedback" class="mt-8 h-12 text-red-600 font-bold text-2xl text-center px-4 transition-all duration-300"></p>
         </div>
 
         <!-- 吉祥话列表 (右侧) -->
-        <div class="lg:col-span-3 space-y-3 order-3">
-            <h2 class="text-xl font-bold text-orange-800 border-b-2 border-orange-200 pb-1">🧧 吉祥话 Phrases</h2>
-            <div id="phrases-list" class="space-y-3">
-                <!-- 吉祥话将通过 JS 注入 -->
+        <div class="lg:col-span-3 space-y-4 order-3">
+            <h2 class="text-2xl font-bold text-orange-800 border-b-4 border-orange-200 pb-2 flex items-center gap-2">
+                <span>🧧</span> 吉祥话 Phrases
+            </h2>
+            <div id="phrases-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                <!-- Data injected via JS -->
             </div>
         </div>
     </div>
 
-    <!-- ✨ Gemini AI 功能板块 -->
-    <div class="max-w-2xl mx-auto mt-16 p-6 gemini-card shadow-lg">
-        <div class="flex items-center gap-3 mb-6">
-            <div class="bg-red-600 p-2 rounded-lg">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+    <!-- ✨ Gemini AI Feature -->
+    <div class="max-w-4xl mx-auto mt-16 p-8 gemini-card shadow-xl border-2 border-red-100">
+        <div class="flex items-center gap-4 mb-8">
+            <div class="bg-red-600 p-3 rounded-2xl shadow-inner">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </div>
-            <h2 class="text-2xl font-bold text-red-700 chinese-font">鱼生创意大师 ✨ AI Master</h2>
-        </div>
-
-        <!-- 功能: 吉祥话生成器 -->
-        <div class="space-y-4">
-            <h3 class="font-bold text-lg text-orange-800">🧧 自定义吉祥话 Greeting Gen</h3>
-            <div class="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-xl">
-                <p class="text-sm text-gray-700">
-                    告诉 AI 你的愿望，它会帮你找出相应的食材联想起来！<br>
-                    <strong>如：</strong><br>
-                    <span class="text-red-700">鸡 - 吉祥如意</span>
-                </p>
-            </div>
-            <div class="flex gap-2 mt-4">
-                <input type="text" id="wish-input" placeholder="输入关键字或愿望，如：鸡 / 考试第一..." class="flex-1 border-2 border-orange-200 rounded-xl px-4 py-2 focus:outline-none focus:border-red-400">
-                <button onclick="generateGreeting()" id="gen-btn" class="bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition-colors shrink-0">✨ 生成</button>
-            </div>
-            <div id="greeting-result" class="min-h-[60px] p-3 bg-white/50 rounded-xl border border-orange-100 text-sm text-red-800 font-medium mt-2"></div>
-        </div>
-    </div>
-
-    <!-- 🌐 导出与分享板块 -->
-    <div class="max-w-2xl mx-auto mt-8 mb-12 p-6 bg-white rounded-3xl border border-gray-200 shadow-sm">
-        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-                <h3 class="text-lg font-bold text-gray-800">导出应用 Export App</h3>
-                <p class="text-sm text-gray-500">复制完整源代码以在其他地方运行。</p>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="copyFullCode()" class="flex items-center gap-2 bg-gray-800 text-white px-5 py-2 rounded-xl font-bold hover:bg-black transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                    复制代码
-                </button>
+                <h2 class="text-3xl font-bold text-red-700 chinese-font">鱼生创意大师 ✨</h2>
+                <p class="text-red-800 opacity-70 font-medium">AI Custom Greeting Generator</p>
             </div>
         </div>
-        <div id="share-toast" class="hidden mt-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200 text-center animate-pulse">
-            代码已复制到剪贴板！Code copied to clipboard!
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-4">
+                <p class="text-gray-700 leading-relaxed">
+                    Tell the AI your wishes or a keyword (e.g., "Success", "Chicken", "Wealth"), and it will craft a unique Yusheng-themed blessing for you!
+                </p>
+                <div class="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-xl">
+                    <p class="text-sm text-orange-900 font-medium">Try typing: "Promotion" or "Happy Family"</p>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <div class="flex flex-col gap-3">
+                    <input type="text" id="wish-input" placeholder="Enter your wish here..." class="w-full border-2 border-orange-200 rounded-2xl px-5 py-3 text-lg focus:outline-none focus:border-red-400 shadow-sm transition-all">
+                    <button onclick="generateGreeting()" id="gen-btn" class="w-full bg-red-600 text-white px-6 py-4 rounded-2xl font-black text-lg hover:bg-red-700 shadow-lg active:scale-95 transition-all">✨ GENERATE BLESSING</button>
+                </div>
+                <div id="greeting-result" class="min-h-[100px] p-5 bg-white/80 rounded-2xl border-2 border-orange-100 text-lg text-red-800 font-bold mt-2 shadow-inner"></div>
+            </div>
         </div>
     </div>
 
-    <!-- 胜利弹窗 -->
-    <div id="win-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center border-4 border-yellow-400">
-            <div class="text-7xl mb-4">🧧</div>
-            <h2 class="text-4xl font-bold text-red-600 chinese-font mb-2">发啊！Huat Ah!</h2>
-            <p class="text-gray-700 mb-6 font-bold">你完成了一盘完美的鱼生！<br>You've prepared the perfect Yusheng!</p>
-            <button onclick="location.reload()" class="bg-red-600 text-white font-bold py-3 px-8 rounded-full hover:bg-red-700 shadow-lg transition-transform active:scale-95">
-                再来一盘 Play Again
+    <!-- 🌐 Export Section -->
+    <div class="max-w-4xl mx-auto mt-12 mb-20 p-8 bg-white rounded-[2.5rem] border-2 border-gray-100 shadow-sm">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="text-center md:text-left">
+                <h3 class="text-2xl font-bold text-gray-800">Export & Share 🌐</h3>
+                <p class="text-gray-500 mt-1">Copy the full source code to host your own version of the game.</p>
+            </div>
+            <button onclick="copyFullCode()" class="group flex items-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-black transition-all shadow-xl active:scale-95">
+                <svg class="w-6 h-6 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                COPY SOURCE CODE
+            </button>
+        </div>
+        <div id="share-toast" class="hidden mt-6 p-4 bg-green-500 text-white text-lg font-bold rounded-2xl text-center shadow-lg animate-bounce">
+            COPIED! Ready to paste! ✅
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="win-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-50 p-6">
+        <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full text-center border-8 border-yellow-400 shadow-[0_0_50px_rgba(250,204,21,0.5)]">
+            <div class="text-8xl mb-6">🏮</div>
+            <h2 class="text-5xl font-bold text-red-600 chinese-font mb-4">HUAT AH! 发啊!</h2>
+            <p class="text-xl text-gray-700 mb-8 font-bold leading-relaxed">
+                You've successfully prepared a feast of prosperity! <br>May the year ahead be filled with abundance.
+            </p>
+            <button onclick="location.reload()" class="w-full bg-red-600 text-white font-black text-2xl py-5 rounded-3xl hover:bg-red-700 shadow-2xl transition-transform active:scale-95">
+                PLAY AGAIN
             </button>
         </div>
     </div>
@@ -206,141 +230,103 @@
         const apiKey = ""; 
 
         const svgIcons = {
-            fish: `<svg viewBox="0 0 100 100"><path d="M10,50 Q30,20 60,35 T90,50 Q70,80 40,65 T10,50" fill="#ff9999" stroke="#b91c1c"/><path d="M65,40 Q75,45 85,40" fill="none" stroke="#b91c1c" stroke-width="2"/><circle cx="75" cy="45" r="2" fill="black"/></svg>`,
-            pomelo: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="#fde047" stroke="#a16207"/><path d="M50,20 Q55,10 60,20" fill="none" stroke="#166534" stroke-width="3"/><path d="M40,50 L60,50 M50,40 L50,60" stroke="#ca8a04" stroke-width="1" opacity="0.3"/></svg>`,
-            spices: `<svg viewBox="0 0 100 100"><rect x="30" y="30" width="15" height="40" rx="2" fill="#e5e7eb" stroke="#374151"/><rect x="55" y="30" width="15" height="40" rx="2" fill="#d1d5db" stroke="#374151"/><path d="M30,35 H45 M55,35 H70" stroke="#374151" stroke-width="2"/></svg>`,
-            oil: `<svg viewBox="0 0 100 100"><path d="M40,20 L60,20 L70,80 L30,80 Z" fill="#fef08a" stroke="#ca8a04"/><path d="M40,30 Q50,25 60,30" fill="none" stroke="#ca8a04" stroke-width="2" opacity="0.5"/></svg>`,
-            carrots: `<svg viewBox="0 0 100 100"><path d="M20,40 L80,42 M20,50 L80,52 M20,60 L80,62" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/><path d="M30,45 L70,47 M30,55 L70,57" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg>`,
-            greenRadish: `<svg viewBox="0 0 100 100"><path d="M20,40 L80,42 M20,50 L80,52 M20,60 L80,62" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/><path d="M30,45 L70,47 M30,55 L70,57" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg>`,
-            whiteRadish: `<svg viewBox="0 0 100 100"><path d="M20,40 L80,42 M20,50 L80,52 M20,60 L80,62" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"/><path d="M30,45 L70,47 M30,55 L70,57" stroke="#f1f5f9" stroke-width="2" stroke-linecap="round"/></svg>`,
-            peanuts: `<svg viewBox="0 0 100 100"><circle cx="30" cy="40" r="5" fill="#d97706"/><circle cx="50" cy="45" r="5" fill="#b45309"/><circle cx="70" cy="40" r="5" fill="#d97706"/><circle cx="40" cy="65" r="5" fill="#b45309"/><circle cx="60" cy="60" r="5" fill="#d97706"/></svg>`,
-            crackers: `<svg viewBox="0 0 100 100"><rect x="25" y="25" width="20" height="20" fill="#fbbf24" stroke="#b45309" transform="rotate(10)"/><rect x="55" y="30" width="20" height="20" fill="#f59e0b" stroke="#b45309" transform="rotate(-5)"/><rect x="40" y="55" width="20" height="20" fill="#fbbf24" stroke="#b45309" transform="rotate(15)"/></svg>`,
-            plumSauce: `<svg viewBox="0 0 100 100"><path d="M35,30 Q50,20 65,30 L60,80 Q50,85 40,80 Z" fill="#991b1b" stroke="#450a0a"/><circle cx="50" cy="50" r="10" fill="#b91c1c" opacity="0.5"/></svg>`
+            fish: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M10,50 Q30,20 60,35 T90,50 Q70,80 40,65 T10,50" fill="#ff9999" stroke="#b91c1c" stroke-width="2"/><circle cx="75" cy="45" r="3" fill="black"/></svg>`,
+            pomelo: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="50" cy="55" r="35" fill="#fde047" stroke="#a16207" stroke-width="2"/><path d="M50,20 Q55,10 60,20" fill="none" stroke="#166534" stroke-width="4"/></svg>`,
+            spices: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect x="30" y="30" width="18" height="40" rx="3" fill="#e5e7eb" stroke="#374151" stroke-width="2"/><rect x="55" y="30" width="18" height="40" rx="3" fill="#d1d5db" stroke="#374151" stroke-width="2"/></svg>`,
+            oil: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M40,20 L60,20 L70,80 L30,80 Z" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/></svg>`,
+            carrots: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M20,40 L80,42 M20,55 L80,57 M20,70 L80,72" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/></svg>`,
+            greenRadish: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M20,40 L80,42 M20,55 L80,57 M20,70 L80,72" stroke="#22c55e" stroke-width="6" stroke-linecap="round"/></svg>`,
+            whiteRadish: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M20,40 L80,42 M20,55 L80,57 M20,70 L80,72" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round"/></svg>`,
+            peanuts: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="30" cy="40" r="7" fill="#d97706"/><circle cx="50" cy="60" r="7" fill="#b45309"/><circle cx="70" cy="40" r="7" fill="#d97706"/></svg>`,
+            crackers: `<svg viewBox="0 0 100 100" class="w-full h-full"><rect x="25" y="25" width="25" height="25" fill="#fbbf24" stroke="#b45309" stroke-width="2" transform="rotate(10)"/><rect x="50" y="50" width="25" height="25" fill="#f59e0b" stroke="#b45309" stroke-width="2" transform="rotate(-5)"/></svg>`,
+            plumSauce: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M35,30 Q50,20 65,30 L60,85 Q50,90 40,85 Z" fill="#991b1b" stroke="#450a0a" stroke-width="2"/></svg>`
         };
 
         const gameData = [
             { id: 1, name: '生鱼', pinyin: 'shēng yú', en: 'Raw Fish', phrase: '年年有余', phPinyin: 'nián nián yǒu yú', phEn: 'Abundance every year', key: 'fish' },
             { id: 2, name: '柚子', pinyin: 'yòu zi', en: 'Pomelo', phrase: '大吉大利', phPinyin: 'dà jí dà lì', phEn: 'Good luck & prosperity', key: 'pomelo' },
-            { id: 3, name: '胡椒粉和五香粉', pinyin: 'hú jiāo fěn hé wǔ xiāng fěn', en: 'Pepper & Five Spice Powder', phrase: '招财进宝', phPinyin: 'zhāo cái jìn bǎo', phEn: 'Attract wealth & treasure', key: 'spices' },
-            { id: 4, name: '油', pinyin: 'yóu', en: 'Oil', phrase: '财源广进', phPinyin: 'cái yuán guǎng jìn', phEn: 'Wealth flows in from all sides', key: 'oil' },
-            { id: 5, name: '红萝卜', pinyin: 'hóng luó bo', en: 'Carrots', phrase: '鸿运当头', phPinyin: 'hóng yùn dāng tóu', phEn: 'Good luck is approaching', key: 'carrots' },
+            { id: 3, name: '调料', pinyin: 'tiáo liào', en: 'Spices', phrase: '招财进宝', phPinyin: 'zhāo cái jìn bǎo', phEn: 'Attract wealth', key: 'spices' },
+            { id: 4, name: '油', pinyin: 'yóu', en: 'Oil', phrase: '财源广进', phPinyin: 'cái yuán guǎng jìn', phEn: 'Wealth flows in', key: 'oil' },
+            { id: 5, name: '红萝卜', pinyin: 'hóng luó bo', en: 'Carrots', phrase: '鸿运当头', phPinyin: 'hóng yùn dāng tóu', phEn: 'Good luck approaches', key: 'carrots' },
             { id: 6, name: '青萝卜', pinyin: 'qīng luó bo', en: 'Green Radish', phrase: '青春永驻', phPinyin: 'qīng chūn yǒng zhù', phEn: 'Eternal youth', key: 'greenRadish' },
-            { id: 7, name: '白萝卜', pinyin: 'bái luó bo', en: 'White Radish', phrase: '步步高升', phPinyin: 'bù bù gāo shēng', phEn: 'Rising higher with every step', key: 'whiteRadish' },
-            { id: 8, name: '芝麻和花生粉', pinyin: 'zhī má hé huā shēng fěn', en: 'Sesame Seeds & Peanuts', phrase: '金银满屋', phPinyin: 'jīn yín mǎn wū', phEn: 'House filled with gold & silver', key: 'peanuts' },
-            { id: 9, name: '薄脆饼干', pinyin: 'báo cuì bǐng gān', en: 'Golden Crackers', phrase: '满地黄金', phPinyin: 'mǎn dì huáng jīn', phEn: 'Floor covered with gold', key: 'crackers' },
-            { id: 10, name: '酸梅酱', pinyin: 'suān méi jiàng', en: 'Plum Sauce', phrase: '甜甜蜜蜜', phPinyin: 'tián tián mì mì', phEn: 'Sweet and loving relationships', key: 'plumSauce' }
+            { id: 7, name: '白萝卜', pinyin: 'bái luó bo', en: 'White Radish', phrase: '步步高升', phPinyin: 'bù bù gāo shēng', phEn: 'Rising higher', key: 'whiteRadish' },
+            { id: 8, name: '花生碎', pinyin: 'huā shēng suì', en: 'Peanuts', phrase: '金银满屋', phPinyin: 'jīn yín mǎn wū', phEn: 'House filled with gold', key: 'peanuts' },
+            { id: 9, name: '薄脆', pinyin: 'báo cuì', en: 'Crackers', phrase: '满地黄金', phPinyin: 'mǎn dì huáng jīn', phEn: 'Golden floors', key: 'crackers' },
+            { id: 10, name: '酸梅酱', pinyin: 'suān méi jiàng', en: 'Plum Sauce', phrase: '甜甜蜜蜜', phPinyin: 'tián tián mì mì', phEn: 'Sweet relationships', key: 'plumSauce' }
         ];
 
         let score = 0;
-        let draggedId = null;
 
         async function callGemini(prompt, systemInstruction) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            let retries = 0;
-            const maxRetries = 5;
-
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] }
             };
-
-            while (retries < maxRetries) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await response.json();
-                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，出了一点小错误。";
-                } catch (e) {
-                    retries++;
-                    await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
-                }
-            }
-            return "无法连接到AI服务器，请稍后再试。";
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                return result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, try again!";
+            } catch (e) { return "Connection error."; }
         }
 
         async function generateGreeting() {
             const input = document.getElementById('wish-input').value;
             if (!input) return;
-            
             const btn = document.getElementById('gen-btn');
             const resultDiv = document.getElementById('greeting-result');
-            
             btn.disabled = true;
-            btn.innerText = "生成中...";
-            resultDiv.innerText = "✨ AI 正在构思吉祥话...";
-
-            const prompt = `用户输入或愿望: ${input}`;
-            const system = "你是一个新加坡捞鱼生创意大师。请将用户的输入（如愿望或特定关键字，如：鸡）与捞鱼生的食材或谐音结合，创作一段有趣的中英双语吉祥话。要求：语气亲切喜庆，内容简洁易读。";
-
-            const result = await callGemini(prompt, system);
+            btn.innerText = "THINKING...";
+            const result = await callGemini(input, "Create a short, funny, and warm Yusheng blessing based on the input. Include both Chinese and English.");
             resultDiv.innerText = result;
             btn.disabled = false;
-            btn.innerText = "✨ 生成";
+            btn.innerText = "✨ GENERATE BLESSING";
         }
 
         function init() {
             const ingList = document.getElementById('ingredients-list');
             const phrList = document.getElementById('phrases-list');
 
-            const shuffledIng = [...gameData].sort(() => Math.random() - 0.5);
-            const shuffledPhr = [...gameData].sort(() => Math.random() - 0.5);
-
-            shuffledIng.forEach(item => {
+            [...gameData].sort(() => Math.random() - 0.5).forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'ingredient-card bg-white p-2 rounded-xl shadow-sm flex items-center gap-3 text-left';
+                el.className = 'ingredient-card bg-white p-3 rounded-2xl shadow-sm flex items-center gap-4';
                 el.draggable = true;
                 el.dataset.id = item.id;
                 el.innerHTML = `
-                    <div class="svg-icon bg-red-50 rounded-lg p-1 shrink-0">${svgIcons[item.key]}</div>
+                    <div class="w-12 h-12 md:w-14 md:h-14 bg-red-50 rounded-xl p-1 shrink-0">${svgIcons[item.key]}</div>
                     <div class="overflow-hidden">
-                        <p class="font-bold text-red-700 leading-tight text-xs md:text-sm">${item.name}</p>
-                        <p class="text-[9px] text-gray-500 italic">${item.pinyin}</p>
-                        <p class="text-[9px] text-gray-400 font-bold uppercase truncate">${item.en}</p>
+                        <p class="font-bold text-red-700 text-sm md:text-base leading-tight">${item.name}</p>
+                        <p class="text-[10px] text-gray-500 italic">${item.pinyin}</p>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase truncate">${item.en}</p>
                     </div>
                 `;
-
-                // Standard Drag events
                 el.addEventListener('dragstart', (e) => {
-                    draggedId = item.id;
                     e.dataTransfer.setData('text/plain', item.id);
-                    el.classList.add('scale-95', 'opacity-50');
+                    el.classList.add('opacity-40');
                 });
-                
-                el.addEventListener('dragend', () => el.classList.remove('scale-95', 'opacity-50'));
-
-                // Enhanced Touch behavior for iPad/Mobile to allow scrolling
-                // We use touch-action: pan-y in CSS, which natively handles this.
-                // No extra JS needed for scrolling, but we ensure events don't block.
-                
+                el.addEventListener('dragend', () => el.classList.remove('opacity-40'));
                 ingList.appendChild(el);
             });
 
-            shuffledPhr.forEach(item => {
+            [...gameData].sort(() => Math.random() - 0.5).forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'drop-zone rounded-xl p-3 flex flex-col justify-center items-center text-center relative';
+                el.className = 'drop-zone rounded-3xl p-4 flex flex-col justify-center items-center text-center relative shadow-inner';
                 el.dataset.id = item.id;
                 el.innerHTML = `
-                    <p class="chinese-font text-lg font-bold text-red-600">“${item.phrase}”</p>
-                    <p class="text-[10px] text-red-400 font-semibold">${item.phPinyin}</p>
-                    <p class="text-[9px] text-gray-500 italic px-1 leading-tight">${item.phEn}</p>
-                    <div class="mt-2 text-[9px] text-gray-300 font-bold uppercase placeholder-text">拖动食材到此处</div>
+                    <p class="chinese-font text-xl md:text-2xl font-bold text-red-600 mb-1">“${item.phrase}”</p>
+                    <p class="text-xs text-red-400 font-semibold mb-1">${item.phPinyin}</p>
+                    <p class="text-[11px] text-gray-500 italic">${item.phEn}</p>
                 `;
-
-                el.addEventListener('dragover', (e) => { 
-                    e.preventDefault(); 
-                    el.classList.add('drag-over'); 
-                });
-                
+                el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
                 el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
-                
                 el.addEventListener('drop', (e) => {
                     e.preventDefault();
                     el.classList.remove('drag-over');
-                    const id = parseInt(e.dataTransfer.getData('text/plain'));
-                    handleDrop(id, item.id, el);
+                    handleDrop(parseInt(e.dataTransfer.getData('text/plain')), item.id, el);
                 });
                 phrList.appendChild(el);
             });
@@ -352,46 +338,42 @@
                 const data = gameData.find(d => d.id === sId);
                 targetEl.classList.add('matched');
                 targetEl.innerHTML = `
-                    <div class="w-10 h-10 mb-1">${svgIcons[data.key]}</div>
-                    <p class="chinese-font text-sm font-bold text-green-700">${data.phrase}</p>
-                    <p class="text-[9px] text-green-600 font-bold">正确！CORRECT!</p>
+                    <div class="w-12 h-12 mb-2">${svgIcons[data.key]}</div>
+                    <p class="chinese-font text-lg font-bold text-green-700">${data.phrase}</p>
+                    <p class="text-xs text-green-600 font-bold">MATCHED! ✅</p>
                 `;
-                const source = document.querySelector(`.ingredient-card[data-id="${sId}"]`);
-                source.classList.add('opacity-10', 'grayscale', 'pointer-events-none');
-                source.draggable = false;
+                document.querySelector(`.ingredient-card[data-id="${sId}"]`).classList.add('opacity-20', 'grayscale', 'pointer-events-none');
+                
                 const plate = document.getElementById('plate-items');
                 if (score === 0) plate.innerHTML = '';
                 const pItem = document.createElement('div');
-                pItem.className = 'w-16 h-16 md:w-20 md:h-20 on-plate absolute';
+                pItem.className = 'w-20 h-20 md:w-28 md:h-28 on-plate absolute';
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * 80;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                pItem.style.left = `calc(50% + ${x}px - 32px)`;
-                pItem.style.top = `calc(50% + ${y}px - 32px)`;
+                const radius = Math.random() * (window.innerWidth < 768 ? 60 : 120);
+                pItem.style.left = `calc(50% + ${Math.cos(angle) * radius}px - 40px)`;
+                pItem.style.top = `calc(50% + ${Math.sin(angle) * radius}px - 40px)`;
                 pItem.innerHTML = svgIcons[data.key];
                 plate.appendChild(pItem);
+                
                 score++;
                 document.getElementById('score').innerText = score;
-                document.getElementById('feedback').innerHTML = `<div class="text-green-600">✅ “${data.phrase}”</div>`;
-                if (score === 10) setTimeout(() => document.getElementById('win-modal').classList.remove('hidden'), 800);
+                document.getElementById('feedback').innerText = `✅ Excellent! "${data.phrase}" added.`;
+                if (score === 10) setTimeout(() => document.getElementById('win-modal').classList.remove('hidden'), 500);
             } else {
-                document.getElementById('feedback').innerHTML = `<div class="text-red-600">❌ 请再试一次！Try again!</div>`;
-                setTimeout(() => { if(document.getElementById('feedback').innerText.includes('❌')) document.getElementById('feedback').innerText = ""; }, 1500);
+                document.getElementById('feedback').innerText = `❌ Oops! Try a different match.`;
+                setTimeout(() => { if(document.getElementById('feedback').innerText.includes('❌')) document.getElementById('feedback').innerText = ""; }, 2000);
             }
         }
 
         function copyFullCode() {
-            const fullHtml = document.documentElement.outerHTML;
             const textarea = document.createElement('textarea');
-            textarea.value = fullHtml;
+            textarea.value = document.documentElement.outerHTML;
             document.body.appendChild(textarea);
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            const toast = document.getElementById('share-toast');
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 3000);
+            document.getElementById('share-toast').classList.remove('hidden');
+            setTimeout(() => document.getElementById('share-toast').classList.add('hidden'), 3000);
         }
 
         window.onload = init;
