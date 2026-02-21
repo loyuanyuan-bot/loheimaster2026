@@ -12,32 +12,35 @@
             background-color: #fffaf0;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
+            touch-action: manipulation;
         }
 
         .chinese-font {
             font-family: 'Ma Shan Zheng', cursive, 'Noto Sans SC', sans-serif;
         }
 
-        /* Improved touch targets for iPad/Mobile */
+        /* Standardized touch interaction */
         .ingredient-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
             cursor: grab;
             border: 2px solid #fee2e2;
-            touch-action: pan-y; /* Allows vertical scrolling while interacting */
             user-select: none;
             -webkit-user-drag: none;
             min-height: 80px;
             z-index: 10;
+            touch-action: none; /* We handle all logic via JS for precision */
         }
 
         .ingredient-card:active {
             cursor: grabbing;
         }
 
-        .ingredient-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border-color: #f87171;
+        /* Visual cue for hold-to-drag */
+        .is-holding {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #ef4444;
+            background-color: #fff1f1;
         }
 
         .drop-zone {
@@ -178,7 +181,7 @@
                 <div class="yusheng-plate rounded-full border-[12px] md:border-[16px] border-yellow-600 flex items-center justify-center relative overflow-hidden shadow-2xl">
                     <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#ef4444 2px, transparent 2px); background-size: 20px 20px;"></div>
                     <div id="plate-items" class="absolute inset-0 flex flex-wrap p-8 md:p-12 items-center justify-center pointer-events-none">
-                        <span class="text-gray-400 opacity-60 text-xl md:text-2xl chinese-font text-center px-6">把食材拖进来！<br>Drag ingredients here!</span>
+                        <span id="placeholder-text" class="text-gray-400 opacity-60 text-xl md:text-2xl chinese-font text-center px-6">把食材拖进来！<br>Drag ingredients here!</span>
                     </div>
                 </div>
                 <!-- Interactive Decoration (Chopsticks) -->
@@ -281,7 +284,6 @@
             { id: 10, name: '酸梅酱', pinyin: 'suān méi jàng', en: 'Plum Sauce', phrase: '甜甜蜜蜜', phPinyin: 'tián tián mì mì', phEn: 'Sweet relationships', key: 'plumSauce' }
         ];
 
-        // --- WHEEL CONFIG ---
         const wishes = [
             { text: "学业进步", en: "Aces in Exams", color: "#fca5a5", icon: "📚" },
             { text: "聪明伶俐", en: "Smart & Sharp", color: "#fecaca", icon: "💡" },
@@ -299,140 +301,65 @@
         let currentRotation = 0;
         let isSpinning = false;
 
-        // --- WHEEL FUNCTIONS ---
-        function drawWheel() {
-            const size = canvas.width;
-            const center = size / 2;
-            const radius = center - 5;
-            const sliceAngle = (Math.PI * 2) / wishes.length;
-
-            ctx.clearRect(0, 0, size, size);
-
-            wishes.forEach((wish, i) => {
-                const startAngle = i * sliceAngle;
-                
-                // Draw slice
-                ctx.beginPath();
-                ctx.moveTo(center, center);
-                ctx.arc(center, center, radius, startAngle, startAngle + sliceAngle);
-                ctx.fillStyle = wish.color;
-                ctx.fill();
-                ctx.strokeStyle = "#b91c1c";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                // Draw text & icon
-                ctx.save();
-                ctx.translate(center, center);
-                ctx.rotate(startAngle + sliceAngle / 2);
-                ctx.textAlign = "right";
-                ctx.fillStyle = "#b91c1c";
-                
-                ctx.font = "bold 15px sans-serif";
-                ctx.fillText(wish.text, radius - 20, 5);
-                
-                ctx.font = "20px sans-serif";
-                ctx.fillText(wish.icon, radius - 90, 8);
-                ctx.restore();
-            });
-        }
-
-        function spinWheel() {
-            if (isSpinning) return;
-
-            isSpinning = true;
-            const btn = document.getElementById('spin-btn');
-            const resultDiv = document.getElementById('wheel-result');
-            
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'scale-95');
-            resultDiv.innerHTML = `<p class="text-red-500 font-bold animate-pulse text-xl">✨ 正在为您捕捉好运中... ✨</p>`;
-
-            // Spin math
-            const minSpin = 360 * 5; // 5 full loops
-            const randomExtra = Math.floor(Math.random() * 360);
-            const totalRotation = currentRotation + minSpin + randomExtra;
-            currentRotation = totalRotation;
-
-            canvas.style.transform = `rotate(${totalRotation}deg)`;
-
-            // Wait for transition to finish (4s in CSS)
-            setTimeout(() => {
-                isSpinning = false;
-                btn.disabled = false;
-                btn.classList.remove('opacity-50', 'scale-95');
-
-                const actualDegrees = totalRotation % 360;
-                const sliceSize = 360 / wishes.length;
-                // Offset calculation for pointer at 12 o'clock
-                const index = Math.floor(((360 - actualDegrees + 270) % 360) / sliceSize);
-                const win = wishes[index];
-
-                resultDiv.innerHTML = `
-                    <div class="animate-in zoom-in duration-500 flex flex-col items-center">
-                        <span class="text-5xl block mb-2 transform hover:scale-125 transition-transform cursor-default">${win.icon}</span>
-                        <h4 class="text-4xl font-black text-red-600 chinese-font">“${win.text}”</h4>
-                        <p class="text-xl text-red-800 font-bold uppercase mt-2 tracking-widest">${win.en}</p>
-                    </div>
-                `;
-            }, 4100);
-        }
-
-        // --- TOUCH DRAG HELPERS ---
+        // --- IMPROVED TOUCH HANDLERS (Hold to Drag) ---
         let activeTouchElement = null;
         let touchOffsetX = 0;
         let touchOffsetY = 0;
-        let touchStartX = 0;
-        let touchStartY = 0;
+        let holdTimer = null;
         let isDragging = false;
 
-        function handleTouchStart(e, item) {
+        function handleTouchStart(e) {
             const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            isDragging = false;
-            
-            const rect = e.target.closest('.ingredient-card').getBoundingClientRect();
-            touchOffsetX = touchStartX - rect.left;
-            touchOffsetY = touchStartY - rect.top;
+            const originalEl = e.target.closest('.ingredient-card');
+            if (!originalEl || originalEl.classList.contains('pointer-events-none')) return;
+
+            // Start a timer for the "Hold" gesture
+            // This allows normal scrolls to happen if the user just swipes immediately
+            holdTimer = setTimeout(() => {
+                isDragging = true;
+                originalEl.classList.add('is-holding');
+                
+                const rect = originalEl.getBoundingClientRect();
+                touchOffsetX = touch.clientX - rect.left;
+                touchOffsetY = touch.clientY - rect.top;
+
+                // Create the floating visual element
+                activeTouchElement = originalEl.cloneNode(true);
+                activeTouchElement.style.position = 'fixed';
+                activeTouchElement.style.width = rect.width + 'px';
+                activeTouchElement.style.height = rect.height + 'px';
+                activeTouchElement.style.left = rect.left + 'px';
+                activeTouchElement.style.top = rect.top + 'px';
+                activeTouchElement.style.zIndex = '1000';
+                activeTouchElement.style.pointerEvents = 'none';
+                activeTouchElement.style.opacity = '0.9';
+                activeTouchElement.dataset.id = originalEl.dataset.id;
+                
+                document.body.appendChild(activeTouchElement);
+                originalEl.style.opacity = '0.3';
+                
+                // Vibrate if supported for haptic feedback
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
+            }, 200); // 200ms delay to distinguish from a scroll
         }
 
         function handleTouchMove(e) {
-            const touch = e.touches[0];
-            const dx = Math.abs(touch.clientX - touchStartX);
-            const dy = Math.abs(touch.clientY - touchStartY);
-
-            // If we haven't started dragging yet, check if it's a drag or a scroll
+            // If the user moves their finger significantly before the timer fires, 
+            // cancel the hold to allow normal page scrolling.
             if (!isDragging) {
-                // If horizontal movement is greater than vertical, start dragging
-                if (dx > dy && dx > 10) {
-                    isDragging = true;
-                    
-                    const originalEl = e.target.closest('.ingredient-card');
-                    const rect = originalEl.getBoundingClientRect();
-                    
-                    activeTouchElement = originalEl.cloneNode(true);
-                    activeTouchElement.style.position = 'fixed';
-                    activeTouchElement.style.width = rect.width + 'px';
-                    activeTouchElement.style.height = rect.height + 'px';
-                    activeTouchElement.style.left = rect.left + 'px';
-                    activeTouchElement.style.top = rect.top + 'px';
-                    activeTouchElement.style.zIndex = '1000';
-                    activeTouchElement.style.pointerEvents = 'none';
-                    activeTouchElement.style.opacity = '0.8';
-                    activeTouchElement.style.transform = 'scale(1.1)';
-                    activeTouchElement.dataset.id = originalEl.dataset.id;
-                    
-                    document.body.appendChild(activeTouchElement);
-                    originalEl.style.opacity = '0.3';
-                }
+                clearTimeout(holdTimer);
+                return;
             }
 
-            if (isDragging && activeTouchElement) {
+            // Once dragging starts, prevent page scrolling
+            if (e.cancelable) e.preventDefault();
+
+            const touch = e.touches[0];
+            if (activeTouchElement) {
                 activeTouchElement.style.left = (touch.clientX - touchOffsetX) + 'px';
                 activeTouchElement.style.top = (touch.clientY - touchOffsetY) + 'px';
 
-                // Visual feedback for drop zones
+                // Check for drop zones
                 const zones = document.querySelectorAll('.drop-zone');
                 zones.forEach(zone => {
                     const rect = zone.getBoundingClientRect();
@@ -443,39 +370,101 @@
                         zone.classList.remove('drag-over');
                     }
                 });
-                
-                // Prevent scrolling when actively dragging
-                if (e.cancelable) e.preventDefault();
             }
         }
 
         function handleTouchEnd(e) {
-            if (!isDragging || !activeTouchElement) {
-                activeTouchElement = null;
-                isDragging = false;
-                return;
-            }
-
+            clearTimeout(holdTimer);
+            
+            if (!isDragging) return;
+            
             const touch = e.changedTouches[0];
             const zones = document.querySelectorAll('.drop-zone');
-            
+            let dropped = false;
+
             zones.forEach(zone => {
                 const rect = zone.getBoundingClientRect();
                 if (touch.clientX > rect.left && touch.clientX < rect.right &&
                     touch.clientY > rect.top && touch.clientY < rect.bottom) {
                     handleDrop(parseInt(activeTouchElement.dataset.id), parseInt(zone.dataset.id), zone);
+                    dropped = true;
                 }
                 zone.classList.remove('drag-over');
             });
 
             const original = document.querySelector(`.ingredient-card[data-id="${activeTouchElement.dataset.id}"]`);
-            if (original && !original.classList.contains('pointer-events-none')) {
-                original.style.opacity = '1';
+            if (original) {
+                original.classList.remove('is-holding');
+                if (!original.classList.contains('pointer-events-none')) {
+                    original.style.opacity = '1';
+                }
             }
 
-            activeTouchElement.remove();
-            activeTouchElement = null;
+            if (activeTouchElement) {
+                activeTouchElement.remove();
+                activeTouchElement = null;
+            }
             isDragging = false;
+        }
+
+        // --- WHEEL FUNCTIONS ---
+        function drawWheel() {
+            const size = canvas.width;
+            const center = size / 2;
+            const radius = center - 5;
+            const sliceAngle = (Math.PI * 2) / wishes.length;
+            ctx.clearRect(0, 0, size, size);
+            wishes.forEach((wish, i) => {
+                const startAngle = i * sliceAngle;
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, startAngle, startAngle + sliceAngle);
+                ctx.fillStyle = wish.color;
+                ctx.fill();
+                ctx.strokeStyle = "#b91c1c";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#b91c1c";
+                ctx.font = "bold 15px sans-serif";
+                ctx.fillText(wish.text, radius - 20, 5);
+                ctx.font = "20px sans-serif";
+                ctx.fillText(wish.icon, radius - 90, 8);
+                ctx.restore();
+            });
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            const btn = document.getElementById('spin-btn');
+            const resultDiv = document.getElementById('wheel-result');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'scale-95');
+            resultDiv.innerHTML = `<p class="text-red-500 font-bold animate-pulse text-xl">✨ 正在为您捕捉好运中... ✨</p>`;
+            const minSpin = 360 * 5;
+            const randomExtra = Math.floor(Math.random() * 360);
+            const totalRotation = currentRotation + minSpin + randomExtra;
+            currentRotation = totalRotation;
+            canvas.style.transform = `rotate(${totalRotation}deg)`;
+            setTimeout(() => {
+                isSpinning = false;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'scale-95');
+                const actualDegrees = totalRotation % 360;
+                const sliceSize = 360 / wishes.length;
+                const index = Math.floor(((360 - actualDegrees + 270) % 360) / sliceSize);
+                const win = wishes[index];
+                resultDiv.innerHTML = `
+                    <div class="animate-in zoom-in duration-500 flex flex-col items-center">
+                        <span class="text-5xl block mb-2 transform hover:scale-125 transition-transform cursor-default">${win.icon}</span>
+                        <h4 class="text-4xl font-black text-red-600 chinese-font">“${win.text}”</h4>
+                        <p class="text-xl text-red-800 font-bold uppercase mt-2 tracking-widest">${win.en}</p>
+                    </div>`;
+            }, 4100);
         }
 
         // --- CORE GAME LOGIC ---
@@ -483,7 +472,6 @@
             const ingList = document.getElementById('ingredients-list');
             const phrList = document.getElementById('phrases-list');
 
-            // Setup Ingredients (Source)
             [...gameData].sort(() => Math.random() - 0.5).forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'ingredient-card bg-white p-3 rounded-2xl shadow-sm flex items-center gap-4';
@@ -495,25 +483,25 @@
                         <p class="font-bold text-red-700 text-sm md:text-base leading-tight">${item.name}</p>
                         <p class="text-[10px] text-gray-500 italic">${item.pinyin}</p>
                         <p class="text-[10px] text-gray-400 font-bold uppercase truncate">${item.en}</p>
-                    </div>
-                `;
+                    </div>`;
                 
-                // Mouse Events
+                // Desktop Mouse Support
                 el.addEventListener('dragstart', (e) => {
                     e.dataTransfer.setData('text/plain', item.id);
                     el.classList.add('opacity-40');
                 });
                 el.addEventListener('dragend', () => el.classList.remove('opacity-40'));
 
-                // Touch Events (Hybrid scrolling/dragging)
-                el.addEventListener('touchstart', (e) => handleTouchStart(e, item), {passive: true});
-                el.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false});
-                el.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: true});
-
+                // Mobile/iPad Touch Support (Custom Implementation)
+                el.addEventListener('touchstart', handleTouchStart, {passive: true});
+                
                 ingList.appendChild(el);
             });
 
-            // Setup Phrases (Targets)
+            // Global Touch Handlers for Drag Movement
+            document.addEventListener('touchmove', handleTouchMove, {passive: false});
+            document.addEventListener('touchend', handleTouchEnd, {passive: true});
+
             [...gameData].sort(() => Math.random() - 0.5).forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'drop-zone rounded-3xl p-4 flex flex-col justify-center items-center text-center relative shadow-inner';
@@ -521,8 +509,8 @@
                 el.innerHTML = `
                     <p class="chinese-font text-xl md:text-2xl font-bold text-red-600 mb-1">“${item.phrase}”</p>
                     <p class="text-xs text-red-400 font-semibold mb-1">${item.phPinyin}</p>
-                    <p class="text-[11px] text-gray-500 italic">${item.phEn}</p>
-                `;
+                    <p class="text-[11px] text-gray-500 italic">${item.phEn}</p>`;
+                
                 el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
                 el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
                 el.addEventListener('drop', (e) => {
@@ -544,16 +532,15 @@
                 targetEl.innerHTML = `
                     <div class="w-12 h-12 mb-2 animate-bounce">${svgIcons[data.key]}</div>
                     <p class="chinese-font text-lg font-bold text-green-700">${data.phrase}</p>
-                    <p class="text-xs text-green-600 font-bold">MATCHED! ✅</p>
-                `;
+                    <p class="text-xs text-green-600 font-bold">MATCHED! ✅</p>`;
+                
                 const sourceEl = document.querySelector(`.ingredient-card[data-id="${sId}"]`);
-                if (sourceEl) {
-                    sourceEl.classList.add('opacity-20', 'grayscale', 'pointer-events-none');
-                    sourceEl.style.opacity = '0.2';
-                }
+                if (sourceEl) sourceEl.classList.add('opacity-20', 'grayscale', 'pointer-events-none');
                 
                 const plate = document.getElementById('plate-items');
-                if (score === 0) plate.innerHTML = '';
+                const placeholder = document.getElementById('placeholder-text');
+                if (placeholder) placeholder.remove();
+
                 const pItem = document.createElement('div');
                 pItem.className = 'w-20 h-20 md:w-28 md:h-28 on-plate absolute';
                 const angle = Math.random() * Math.PI * 2;
