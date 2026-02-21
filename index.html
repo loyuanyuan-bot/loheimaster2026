@@ -189,7 +189,7 @@
     </div>
 
     <!-- ✨ Gemini AI Feature -->
-    <div class="max-w-4xl mx-auto mt-16 p-8 gemini-card shadow-xl border-2 border-red-100">
+    <div class="max-w-4xl mx-auto mt-16 mb-20 p-8 gemini-card shadow-xl border-2 border-red-100">
         <div class="flex items-center gap-4 mb-8">
             <div class="bg-red-600 p-3 rounded-2xl shadow-inner">
                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -223,22 +223,6 @@
         </div>
     </div>
 
-    <div class="max-w-4xl mx-auto mt-12 mb-20 p-8 bg-white rounded-[2.5rem] border-2 border-gray-100 shadow-sm">
-        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div class="text-center md:text-left">
-                <h3 class="text-2xl font-bold text-gray-800">Export & Share 🌐</h3>
-                <p class="text-gray-500 mt-1">Copy the full source code to host your own version of the game.</p>
-            </div>
-            <button onclick="copyFullCode()" class="group flex items-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-black transition-all shadow-xl active:scale-95">
-                <svg class="w-6 h-6 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                COPY SOURCE CODE
-            </button>
-        </div>
-        <div id="share-toast" class="hidden mt-6 p-4 bg-green-500 text-white text-lg font-bold rounded-2xl text-center shadow-lg animate-bounce">
-            COPIED! Ready to paste! ✅
-        </div>
-    </div>
-
     <!-- Win Modal -->
     <div id="win-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-50 p-6">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full text-center border-8 border-yellow-400 shadow-[0_0_50px_rgba(250,204,21,0.5)]">
@@ -254,7 +238,6 @@
     </div>
 
     <script>
-        // API Key stays empty, handled by environment
         const apiKey = ""; 
 
         const svgIcons = {
@@ -285,7 +268,6 @@
 
         let score = 0;
 
-        // Enhanced callGemini with exponential backoff and correct environment settings
         async function callGemini(userQuery) {
             const systemPrompt = "你是一位极具创意的捞鱼生吉祥话大师。用户会输入一个愿望或关键词。请将这个关键词与捞鱼生的食材、动作（如：捞、拌、洒）或谐音结合，创作一段充满喜庆、双语（中英）的独特祝福。回复要简洁、押韵、充满年味。";
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -302,9 +284,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-                    
                     if (!response.ok) throw new Error('API request failed');
-                    
                     const result = await response.json();
                     return result.candidates?.[0]?.content?.parts?.[0]?.text;
                 } catch (e) {
@@ -323,7 +303,6 @@
             const btn = document.getElementById('gen-btn');
             const resultDiv = document.getElementById('greeting-result');
             
-            // Set loading state
             btn.disabled = true;
             btn.innerHTML = `<span>构思中...</span><div class="dot-flashing ml-4"></div>`;
             resultDiv.innerHTML = `<div class="flex flex-col items-center gap-2"><div class="dot-flashing"></div><span class="text-sm text-gray-400 mt-4">大师正在掐指一算...</span></div>`;
@@ -331,7 +310,7 @@
             try {
                 const result = await callGemini(input);
                 resultDiv.innerHTML = `<div class="animate-in fade-in slide-in-from-bottom-2 duration-700">${result}</div>`;
-                inputField.value = ""; // Clear input after success
+                inputField.value = "";
             } catch (e) {
                 resultDiv.innerHTML = `<div class="text-red-500 text-sm">哎呀，网络有点调皮，请稍后再试！</div>`;
             } finally {
@@ -384,7 +363,6 @@
                 phrList.appendChild(el);
             });
 
-            // Enter key support for input
             document.getElementById('wish-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') generateGreeting();
             });
@@ -421,17 +399,6 @@
                 document.getElementById('feedback').innerText = `❌ 哎呀，这个食材和吉祥话对不上哦！`;
                 setTimeout(() => { if(document.getElementById('feedback').innerText.includes('❌')) document.getElementById('feedback').innerText = ""; }, 2000);
             }
-        }
-
-        function copyFullCode() {
-            const textarea = document.createElement('textarea');
-            textarea.value = document.documentElement.outerHTML;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            document.getElementById('share-toast').classList.remove('hidden');
-            setTimeout(() => document.getElementById('share-toast').classList.add('hidden'), 3000);
         }
 
         window.onload = init;
