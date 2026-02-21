@@ -20,13 +20,14 @@
 
         /* Improved touch targets for iPad/Mobile */
         .ingredient-card {
-            transition: all 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             cursor: grab;
             border: 2px solid #fee2e2;
-            touch-action: pan-y; 
+            touch-action: none; /* Critical for custom touch handling */
             user-select: none;
             -webkit-user-drag: element;
             min-height: 80px;
+            z-index: 10;
         }
 
         .ingredient-card:active {
@@ -377,6 +378,81 @@
             }, 4100);
         }
 
+        // --- TOUCH DRAG HELPERS ---
+        let activeTouchElement = null;
+        let touchOffsetX = 0;
+        let touchOffsetY = 0;
+        let originalParent = null;
+
+        function handleTouchStart(e, item) {
+            const touch = e.touches[0];
+            const rect = e.target.closest('.ingredient-card').getBoundingClientRect();
+            
+            activeTouchElement = e.target.closest('.ingredient-card').cloneNode(true);
+            activeTouchElement.style.position = 'fixed';
+            activeTouchElement.style.width = rect.width + 'px';
+            activeTouchElement.style.height = rect.height + 'px';
+            activeTouchElement.style.left = rect.left + 'px';
+            activeTouchElement.style.top = rect.top + 'px';
+            activeTouchElement.style.zIndex = '1000';
+            activeTouchElement.style.pointerEvents = 'none';
+            activeTouchElement.style.opacity = '0.8';
+            activeTouchElement.style.transform = 'scale(1.1)';
+            activeTouchElement.dataset.id = item.id;
+            
+            touchOffsetX = touch.clientX - rect.left;
+            touchOffsetY = touch.clientY - rect.top;
+            
+            document.body.appendChild(activeTouchElement);
+            e.target.closest('.ingredient-card').style.opacity = '0.3';
+            e.preventDefault();
+        }
+
+        function handleTouchMove(e) {
+            if (!activeTouchElement) return;
+            const touch = e.touches[0];
+            activeTouchElement.style.left = (touch.clientX - touchOffsetX) + 'px';
+            activeTouchElement.style.top = (touch.clientY - touchOffsetY) + 'px';
+
+            // Visual feedback for drop zones
+            const zones = document.querySelectorAll('.drop-zone');
+            zones.forEach(zone => {
+                const rect = zone.getBoundingClientRect();
+                if (touch.clientX > rect.left && touch.clientX < rect.right &&
+                    touch.clientY > rect.top && touch.clientY < rect.bottom) {
+                    zone.classList.add('drag-over');
+                } else {
+                    zone.classList.remove('drag-over');
+                }
+            });
+            e.preventDefault();
+        }
+
+        function handleTouchEnd(e) {
+            if (!activeTouchElement) return;
+            const touch = e.changedTouches[0];
+            const zones = document.querySelectorAll('.drop-zone');
+            let dropped = false;
+
+            zones.forEach(zone => {
+                const rect = zone.getBoundingClientRect();
+                if (touch.clientX > rect.left && touch.clientX < rect.right &&
+                    touch.clientY > rect.top && touch.clientY < rect.bottom) {
+                    handleDrop(parseInt(activeTouchElement.dataset.id), parseInt(zone.dataset.id), zone);
+                    dropped = true;
+                }
+                zone.classList.remove('drag-over');
+            });
+
+            const original = document.querySelector(`.ingredient-card[data-id="${activeTouchElement.dataset.id}"]`);
+            if (original && !original.classList.contains('pointer-events-none')) {
+                original.style.opacity = '1';
+            }
+
+            activeTouchElement.remove();
+            activeTouchElement = null;
+        }
+
         // --- CORE GAME LOGIC ---
         function init() {
             const ingList = document.getElementById('ingredients-list');
@@ -396,11 +472,19 @@
                         <p class="text-[10px] text-gray-400 font-bold uppercase truncate">${item.en}</p>
                     </div>
                 `;
+                
+                // Mouse Events
                 el.addEventListener('dragstart', (e) => {
                     e.dataTransfer.setData('text/plain', item.id);
                     el.classList.add('opacity-40');
                 });
                 el.addEventListener('dragend', () => el.classList.remove('opacity-40'));
+
+                // Touch Events
+                el.addEventListener('touchstart', (e) => handleTouchStart(e, item), {passive: false});
+                el.addEventListener('touchmove', handleTouchMove, {passive: false});
+                el.addEventListener('touchend', handleTouchEnd, {passive: false});
+
                 ingList.appendChild(el);
             });
 
@@ -437,7 +521,11 @@
                     <p class="chinese-font text-lg font-bold text-green-700">${data.phrase}</p>
                     <p class="text-xs text-green-600 font-bold">MATCHED! ✅</p>
                 `;
-                document.querySelector(`.ingredient-card[data-id="${sId}"]`).classList.add('opacity-20', 'grayscale', 'pointer-events-none');
+                const sourceEl = document.querySelector(`.ingredient-card[data-id="${sId}"]`);
+                if (sourceEl) {
+                    sourceEl.classList.add('opacity-20', 'grayscale', 'pointer-events-none');
+                    sourceEl.style.opacity = '0.2';
+                }
                 
                 const plate = document.getElementById('plate-items');
                 if (score === 0) plate.innerHTML = '';
